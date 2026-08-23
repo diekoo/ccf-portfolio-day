@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { sql, ensureSchema } from "@/lib/db";
-import { ARTISTS, SLOTS } from "@/lib/config";
+import { ARTISTS, SLOTS, artistSlots } from "@/lib/config";
 
 export const dynamic = "force-dynamic";
 
@@ -23,7 +23,7 @@ export async function POST(req: NextRequest) {
   const { artistId, slot, name, email } = body;
 
   if (!ARTISTS.some(a => a.id === artistId)) return NextResponse.json({ error: "Unknown artist" }, { status: 400 });
-  if (!SLOTS.includes(slot)) return NextResponse.json({ error: "Unknown slot" }, { status: 400 });
+  if (!artistSlots(artistId).includes(slot)) return NextResponse.json({ error: "Unknown slot for this artist" }, { status: 400 });
   const cleanName = String(name || "").trim().slice(0, 120);
   const cleanEmail = String(email || "").trim().slice(0, 200).toLowerCase();
   if (cleanName.length < 2) return NextResponse.json({ error: "Please fill in your name" }, { status: 400 });
