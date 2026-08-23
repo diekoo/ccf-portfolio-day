@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { sql, ensureSchema } from "@/lib/db";
-import { ARTISTS, SLOTS } from "@/lib/config";
+import { ARTISTS, SLOTS, artistSlots } from "@/lib/config";
 
 export const dynamic = "force-dynamic";
 
@@ -22,7 +22,7 @@ export async function POST(req: NextRequest) {
   if (!authed(req)) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   await ensureSchema();
   const { artistId, slot, name, email } = await req.json();
-  if (!ARTISTS.some(a => a.id === artistId) || !SLOTS.includes(slot))
+  if (!ARTISTS.some(a => a.id === artistId) || !artistSlots(artistId).includes(slot))
     return NextResponse.json({ error: "Unknown artist or slot" }, { status: 400 });
   try {
     await sql`INSERT INTO pd_bookings (artist_id, slot, name, email)
@@ -46,7 +46,7 @@ export async function PATCH(req: NextRequest) {
   const newSlot = slot ?? b.slot;
   const newName = name !== undefined ? String(name).trim() : b.name;
   const newEmail = email !== undefined ? String(email).trim().toLowerCase() : b.email;
-  if (!ARTISTS.some(a => a.id === newArtist) || !SLOTS.includes(newSlot))
+  if (!ARTISTS.some(a => a.id === newArtist) || !artistSlots(newArtist).includes(newSlot))
     return NextResponse.json({ error: "Unknown artist or slot" }, { status: 400 });
   if (newName.length < 2) return NextResponse.json({ error: "Naam te kort" }, { status: 400 });
   try {
