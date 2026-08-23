@@ -12,6 +12,11 @@ export default function Admin() {
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [err, setErr] = useState("");
   const [form, setForm] = useState<{ artistId: string; slot: string; name: string; email: string }>({ artistId: ARTISTS[0].id, slot: SLOTS[0], name: "", email: "" });
+  const [editing, setEditing] = useState<number | null>(null);
+  const [editName, setEditName] = useState("");
+  const [editEmail, setEditEmail] = useState("");
+  const [dragId, setDragId] = useState<number | null>(null);
+  const [dragOver, setDragOver] = useState<string | null>(null);
 
   useEffect(() => { const k = sessionStorage.getItem("pdkey"); if (k) { setKey(k); tryLoad(k); } }, []);
 
@@ -23,19 +28,34 @@ export default function Admin() {
     setBookings(d.bookings); setAuthed(true); sessionStorage.setItem("pdkey", k);
   }
 
+  async function api(method: string, body: any) {
+    setErr("");
+    const r = await fetch("/api/admin", { method, headers: { "x-admin-key": key, "Content-Type": "application/json" }, body: JSON.stringify(body) });
+    if (!r.ok) { const d = await r.json().catch(() => ({})); setErr(d.error || "Fout"); }
+    tryLoad(key);
+    return r.ok;
+  }
+
   async function del(id: number) {
     if (!confirm("Boeking verwijderen?")) return;
-    await fetch("/api/admin", { method: "DELETE", headers: { "x-admin-key": key, "Content-Type": "application/json" }, body: JSON.stringify({ id }) });
-    tryLoad(key);
+    api("DELETE", { id });
   }
 
   async function add() {
-    setErr("");
-    const r = await fetch("/api/admin", { method: "POST", headers: { "x-admin-key": key, "Content-Type": "application/json" }, body: JSON.stringify(form) });
-    const d = await r.json();
-    if (!r.ok) setErr(d.error || "Fout");
-    else setForm(f => ({ ...f, name: "", email: "" }));
-    tryLoad(key);
+    const ok = await api("POST", form);
+    if (ok) setForm(f => ({ ...f, name: "", email: "" }));
+  }
+
+  function startEdit(b: Booking) { setEditing(b.id); setEditName(b.name); setEditEmail(b.email); }
+  async function saveEdit(id: number) {
+    const ok = await api("PATCH", { id, name: editName, email: editEmail });
+    if (ok) setEditing(null);
+  }
+
+  async function moveTo(artistId: string, slot: string) {
+    if (dragId == null) return;
+    await api("PATCH", { id: dragId, artistId, slot });
+    setDragId(null); setDragOver(null);
   }
 
   const byArtist = useMemo(() => {
@@ -58,6 +78,9 @@ export default function Admin() {
   return (
     <main style={wrap}>
       <h1 style={h1}>Portfolio Day — Admin <span style={{ color: RED }}>({bookings.length}/{ARTISTS.length * SLOTS.length})</span></h1>
+      <p style={{ fontSize: 13, color: "#6a6156", margin: "4px 0 14px" }}>
+        Verslepen = verplaatsen: pak een naam op en laat hem los op een ander (vrij) tijdstip — mag ook bij een andere artiest.
+      </p>
 
       <section style={{ background: BEIGE, padding: 14, marginBottom: 22 }}>
         <b style={{ textTransform: "uppercase", fontSize: 13, letterSpacing: ".08em", color: RED }}>Handmatig toevoegen</b>
@@ -84,13 +107,40 @@ export default function Admin() {
             <tbody>
               {SLOTS.map(s => {
                 const b = (byArtist[a.id] || []).find(x => x.slot === s);
+                const cellKey = a.id + "|" + s;
+                const isOver = dragOver === cellKey;
                 return (
-                  <tr key={s} style={{ borderBottom: "1px solid #e3d9cb" }}>
+                  <tr key={s}
+                    onDragOver={e => { if (dragId != null && !b) { e.preventDefault(); setDragOver(cellKey); } }}
+                    onDragLeave={() => { if (isOver) setDragOver(null); }}
+                    onDrop={e => { e.preventDefault(); if (!b) moveTo(a.id, s); }}
+                    style={{ borderBottom: "1px solid #e3d9cb", background: isOver ? "#FBEED3" : undefined, outline: isOver ? `2px dashed ${ORANGE}` : undefined }}>
                     <td style={{ padding: "6px 8px", fontWeight: 800, width: 60 }}>{s}</td>
-                    <td style={{ padding: "6px 8px" }}>{b ? b.name : <span style={{ color: "#b3a89a" }}>vrij</span>}</td>
-                    <td style={{ padding: "6px 8px", color: "#6a6156" }}>{b?.email}</td>
-                    <td style={{ padding: "6px 8px", width: 40 }}>
-                      {b && <button onClick={() => del(b.id)} style={{ ...btnBlack, background: RED, padding: "4px 10px", fontSize: 12 }}>✕</button>}
+                    {b && editing === b.id ? (
+                      <td colSpan={2} style={{ padding: "6px 8px" }}>
+                        <span style={{ display: "inline-flex", gap: 6, flexWrap: "wrap" }}>
+                          <input value={editName} onChange={e => setEditName(e.target.value)} style={{ ...input, padding: "5px 8px" }} placeholder="Naam" />
+                          <input value={editEmail} onChange={e => setEditEmail(e.target.value)} style={{ ...input, padding: "5px 8px" }} placeholder="E-mail" />
+                          <button onClick={() => saveEdit(b.id)} style={{ ...btnBlack, padding: "5px 12px", fontSize: 12 }}>Opslaan</button>
+                          <button onClick={() => setEditing(null)} style={{ ...btnBlack, background: "#8a8378", padding: "5px 12px", fontSize: 12 }}>Annuleren</button>
+                        </span>
+                      </td>
+                    ) : (
+                      <>
+                        <td draggable={!!b}
+                          onDragStart={() => b && setDragId(b.id)}
+                          onDragEnd={() => { setDragId(null); setDragOver(null); }}
+                          style={{ padding: "6px 8px", cursor: b ? "grab" : undefined, opacity: dragId === b?.id ? .4 : 1 }}>
+                          {b ? <span title="Sleep om te verplaatsen">⠿&nbsp; {b.name}</span> : <span style={{ color: "#b3a89a" }}>vrij</span>}
+                        </td>
+                        <td style={{ padding: "6px 8px", color: "#6a6156" }}>{b?.email}</td>
+                      </>
+                    )}
+                    <td style={{ padding: "6px 8px", width: 88, textAlign: "right", whiteSpace: "nowrap" }}>
+                      {b && editing !== b.id && <>
+                        <button onClick={() => startEdit(b)} title="Wijzigen" style={{ ...btnBlack, padding: "4px 10px", fontSize: 12, marginRight: 6 }}>✎</button>
+                        <button onClick={() => del(b.id)} title="Verwijderen" style={{ ...btnBlack, background: RED, padding: "4px 10px", fontSize: 12 }}>✕</button>
+                      </>}
                     </td>
                   </tr>
                 );
