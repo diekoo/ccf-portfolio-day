@@ -1,6 +1,6 @@
 "use client";
 import { useEffect, useMemo, useState } from "react";
-import { ARTISTS, SLOTS } from "@/lib/config";
+import { ARTISTS, SLOTS, artistSlots } from "@/lib/config";
 
 const RED = "#D0293B", ORANGE = "#F29505", BEIGE = "#EDE3D7", BLACK = "#141414";
 
@@ -77,7 +77,7 @@ export default function Admin() {
 
   return (
     <main style={wrap}>
-      <h1 style={h1}>Portfolio Day — Admin <span style={{ color: RED }}>({bookings.length}/{ARTISTS.length * SLOTS.length})</span></h1>
+      <h1 style={h1}>Portfolio Day — Admin <span style={{ color: RED }}>({bookings.length}/{ARTISTS.reduce((n, a) => n + a.slots.length, 0)})</span></h1>
       <p style={{ fontSize: 13, color: "#6a6156", margin: "4px 0 14px" }}>
         Verslepen = verplaatsen: pak een naam op en laat hem los op een ander (vrij) tijdstip — mag ook bij een andere artiest.
       </p>
@@ -89,7 +89,7 @@ export default function Admin() {
             {ARTISTS.map(a => <option key={a.id} value={a.id}>{a.name}</option>)}
           </select>
           <select value={form.slot} onChange={e => setForm(f => ({ ...f, slot: e.target.value }))} style={input}>
-            {SLOTS.map(s => <option key={s}>{s}</option>)}
+            {artistSlots(form.artistId).map(s => <option key={s}>{s}</option>)}
           </select>
           <input placeholder="Naam" value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} style={input} />
           <input placeholder="E-mail (optioneel)" value={form.email} onChange={e => setForm(f => ({ ...f, email: e.target.value }))} style={input} />
@@ -101,11 +101,11 @@ export default function Admin() {
       {ARTISTS.map(a => (
         <section key={a.id} style={{ marginBottom: 20 }}>
           <h2 style={{ fontSize: 16, textTransform: "uppercase", borderBottom: `2px solid ${ORANGE}`, paddingBottom: 4 }}>
-            {a.name} <span style={{ color: RED }}>({(byArtist[a.id] || []).length}/{SLOTS.length})</span>
+            {a.name} <span style={{ color: "#8a8378", fontSize: 12 }}>({a.slots[0]}–{a.slots[a.slots.length-1]})</span> <span style={{ color: RED }}>({(byArtist[a.id] || []).length}/{a.slots.length})</span>
           </h2>
           <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 14 }}>
             <tbody>
-              {SLOTS.map(s => {
+              {a.slots.map(s => {
                 const b = (byArtist[a.id] || []).find(x => x.slot === s);
                 const cellKey = a.id + "|" + s;
                 const isOver = dragOver === cellKey;
