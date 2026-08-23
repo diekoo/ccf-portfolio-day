@@ -17,7 +17,7 @@ export default function Page() {
   const load = () => fetch("/api/bookings").then(r => r.json()).then(d => setTaken(d.taken || {}));
   useEffect(() => { load(); const t = setInterval(load, 15000); return () => clearInterval(t); }, []);
 
-  const freeCount = (id: string) => SLOTS.length - Object.keys(taken[id] || {}).length;
+  const freeCount = (id: string) => (ARTISTS.find(x => x.id === id)?.slots.length ?? 0) - Object.keys(taken[id] || {}).length;
   const selArtist = useMemo(() => ARTISTS.find(a => a.id === artist), [artist]);
 
   async function book() {
@@ -45,9 +45,10 @@ export default function Page() {
         <h1 style={{ color: "#fff", textTransform: "uppercase", fontSize: "clamp(38px,8vw,56px)", lineHeight: 0.95, letterSpacing: "-0.01em", margin: "18px 0 8px", fontWeight: 800 }}>
           {EVENT.title}<br />Reviews
         </h1>
-        <p style={{ color: BEIGE, fontWeight: 700, fontSize: 17, margin: "0 0 4px" }}>{EVENT.date} · reviews 15:00–16:00</p>
+        <p style={{ color: BEIGE, fontWeight: 700, fontSize: 17, margin: "0 0 4px" }}>{EVENT.date} · reviews 14:30–17:15</p>
         <p style={{ color: BEIGE, opacity: .9, margin: "0 0 28px" }}>{EVENT.venue} · {EVENT.reviewMinutes} minutes, one on one</p>
 
+        {/* step 1: artist */}
         <Section n="1" title="Pick your reviewer">
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill,minmax(min(190px,100%),1fr))", gap: 10 }}>
             {ARTISTS.map(a => {
@@ -58,6 +59,7 @@ export default function Page() {
                   style={{ ...btn, background: active ? BLACK : "#fff", color: active ? "#fff" : BLACK,
                            opacity: free === 0 ? .45 : 1, textAlign: "left" }}>
                   <div style={{ fontWeight: 800 }}>{a.name}</div>
+                  <div style={{ fontSize: 11.5, color: "#6a6156" }}>{a.slots[0]}–{a.slots[a.slots.length-1].slice(0,2)}:{String(Number(a.slots[a.slots.length-1].slice(3))+10).padStart(2,"0")}</div>
                   <div style={{ fontSize: 12.5, color: active ? ORANGE : RED, fontWeight: 700 }}>
                     {free === 0 ? "Fully booked" : `${free} spots left`}
                   </div>
@@ -67,10 +69,11 @@ export default function Page() {
           </div>
         </Section>
 
+        {/* step 2: slot */}
         {artist && (
           <Section n="2" title={`Pick a time with ${selArtist?.name}`}>
             <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill,minmax(84px,1fr))", gap: 8 }}>
-              {SLOTS.map(s => {
+              {(selArtist?.slots ?? []).map(s => {
                 const isTaken = !!taken[artist]?.[s]; const active = slot === s;
                 return (
                   <button key={s} onClick={() => { setSlot(s); setMsg(null); }} disabled={isTaken}
@@ -86,6 +89,7 @@ export default function Page() {
           </Section>
         )}
 
+        {/* step 3: details */}
         {artist && slot && (
           <Section n="3" title="Your details">
             <div style={{ display: "grid", gap: 10 }}>
