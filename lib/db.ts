@@ -1,20 +1,28 @@
 // DB layer: uses @vercel/postgres on Vercel (Neon), plain `pg` locally.
-// Locally: set LOCAL_PG_URL=postgres://user@host:port/db
+// Locally: set LOCAL_PG_URL=postgres://user@host:port/db, or run `vercel env pull` —
+// @vercel/postgres refuses a direct connection string, so in dev we fall back to
+// POSTGRES_URL_NON_POOLING over plain `pg`.
 import { sql as vercelSql } from "@vercel/postgres";
 
 type Q = { rows: any[] };
 let localPool: any = null;
 
+// `vercel env pull` writes "[SENSITIVE]" for vars marked sensitive in Vercel — never a usable URL.
+const usable = (v?: string) => (v && v !== "[SENSITIVE]" ? v : undefined);
+
+const directUrl = usable(process.env.LOCAL_PG_URL)
+  || (process.env.NODE_ENV !== "production" ? usable(process.env.POSTGRES_URL_NON_POOLING) : undefined);
+
 async function localQuery(text: string, params: any[]): Promise<Q> {
   if (!localPool) {
     const { Pool } = await import("pg");
-    localPool = new Pool({ connectionString: process.env.LOCAL_PG_URL });
+    localPool = new Pool({ connectionString: directUrl });
   }
   return localPool.query(text, params);
 }
 
 export async function sql(strings: TemplateStringsArray, ...values: any[]): Promise<Q> {
-  if (process.env.LOCAL_PG_URL) {
+  if (directUrl) {
     const text = strings.reduce((acc, s, i) => acc + s + (i < values.length ? `$${i + 1}` : ""), "");
     return localQuery(text, values);
   }
