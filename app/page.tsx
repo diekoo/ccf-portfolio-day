@@ -57,12 +57,17 @@ export default function Page() {
                 <button key={a.id} onClick={() => { setArtist(a.id); setSlot(null); setMsg(null); }}
                   disabled={free === 0}
                   style={{ ...btn, background: active ? BLACK : "#fff", color: active ? "#fff" : BLACK,
-                           opacity: free === 0 ? .45 : 1, textAlign: "left" }}>
+                           opacity: free === 0 ? .7 : 1, textAlign: "left" }}>
                   <div style={{ fontWeight: 800 }}>{a.name}</div>
                   <div style={{ fontSize: 11.5, color: "#6a6156" }}>{a.slots[0]}–{a.slots[a.slots.length-1].slice(0,2)}:{String(Number(a.slots[a.slots.length-1].slice(3))+10).padStart(2,"0")}</div>
                   <div style={{ fontSize: 12.5, color: active ? ORANGE : RED, fontWeight: 700 }}>
                     {free === 0 ? "Fully booked" : `${free} spots left`}
                   </div>
+                  {free === 0 && (
+                    <div style={{ fontSize: 11.5, color: "#6a6156", fontWeight: 600, lineHeight: 1.35, marginTop: 3 }}>
+                      Come by anyway — no-shows go to whoever&rsquo;s there.
+                    </div>
+                  )}
                 </button>
               );
             })}
