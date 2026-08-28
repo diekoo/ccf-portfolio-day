@@ -1,6 +1,6 @@
 "use client";
 import { useEffect, useMemo, useState } from "react";
-import { ARTISTS, SLOTS, artistSlots } from "@/lib/config";
+import { ARTISTS, SLOTS, artistSlots, slotBlock } from "@/lib/config";
 
 const RED = "#D0293B", ORANGE = "#F29505", BEIGE = "#EDE3D7", BLACK = "#141414";
 
@@ -64,6 +64,56 @@ export default function Admin() {
     return m;
   }, [bookings]);
 
+  // export rows, in the running order of the day: block, then artist, then time
+  const EXPORT_HEADER = ["Blok", "Artiest", "Tijd", "Naam", "E-mail", "Geboekt op"];
+  const exportRows = useMemo(() => {
+    const rows: string[][] = [];
+    for (const a of ARTISTS) {
+      for (const s of a.slots) {
+        const b = (byArtist[a.id] || []).find(x => x.slot === s);
+        if (!b) continue;
+        const booked = b.created_at ? new Date(b.created_at).toLocaleString("nl-NL") : "";
+        rows.push([String(slotBlock(s)), a.name, s, b.name, b.email || "", booked]);
+      }
+    }
+    // bookings whose slot no longer fits the artist's block still need to show up
+    const shown = new Set(rows.map(r => r[1] + "|" + r[2]));
+    for (const b of bookings) {
+      const a = ARTISTS.find(x => x.id === b.artist_id);
+      const label = (a?.name ?? b.artist_id) + "|" + b.slot;
+      if (shown.has(label)) continue;
+      const booked = b.created_at ? new Date(b.created_at).toLocaleString("nl-NL") : "";
+      rows.push(["buiten blok", a?.name ?? b.artist_id, b.slot, b.name, b.email || "", booked]);
+    }
+    return rows;
+  }, [bookings, byArtist]);
+
+  const [copied, setCopied] = useState(false);
+  async function copyForSheets() {
+    // tab-separated pastes straight into Google Sheets as columns
+    const tsv = [EXPORT_HEADER, ...exportRows].map(r => r.join("\t")).join("\n");
+    try {
+      await navigator.clipboard.writeText(tsv);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2500);
+    } catch {
+      setErr("Kopiëren geblokkeerd door de browser — gebruik de CSV-knop.");
+    }
+  }
+
+  function downloadCsv() {
+    const esc = (v: string) => `"${v.replace(/"/g, '""')}"`;
+    const csv = [EXPORT_HEADER, ...exportRows].map(r => r.map(esc).join(",")).join("\r\n");
+    // BOM keeps accented names readable when Excel opens the file
+    const blob = new Blob(["﻿" + csv], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "portfolio-day-aanmeldingen.csv";
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+
   if (!authed) return (
     <main style={wrap}>
       <h1 style={h1}>Portfolio Day — Admin</h1>
@@ -96,6 +146,22 @@ export default function Admin() {
           <button onClick={add} style={btnBlack}>Toevoegen</button>
         </div>
         {err && <p style={{ color: RED, fontWeight: 700, margin: "8px 0 0" }}>{err}</p>}
+      </section>
+
+      <section style={{ background: BEIGE, padding: 14, marginBottom: 22 }}>
+        <b style={{ textTransform: "uppercase", fontSize: 13, letterSpacing: ".08em", color: RED }}>Uitdraai</b>
+        <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 8, alignItems: "center" }}>
+          <button onClick={copyForSheets} style={btnBlack}>
+            {copied ? "Gekopieerd ✓" : "Kopieer voor Google Sheets"}
+          </button>
+          <button onClick={downloadCsv} style={{ ...btnBlack, background: "#6a6156" }}>Download CSV</button>
+          <span style={{ fontSize: 13, color: "#6a6156" }}>
+            {exportRows.length} aanmelding{exportRows.length === 1 ? "" : "en"}
+          </span>
+        </div>
+        <p style={{ fontSize: 12.5, color: "#6a6156", margin: "8px 0 0" }}>
+          Kopiëren en dan in een leeg Google Sheet op cel A1 plakken (Ctrl+V) — de kolommen vallen vanzelf goed.
+        </p>
       </section>
 
       {ARTISTS.map(a => (

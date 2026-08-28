@@ -1,7 +1,7 @@
 // Creative Cargo Festival — Portfolio Day (day 2) booking config
 // Saturday 29 Aug 2026 · BIRD · sessions 14:30–18:00 · 45 min per artist, tables in parallel
 // Block 1: 14:30–15:15 · Block 2: 15:30–16:15 · Block 3: 16:30–17:15 (10-minute slots, 4 per artist)
-// 7 artists: 2 tables in blocks 1 and 3, 3 tables in block 2.
+// 6 artists: 2 tables in block 1, 3 in block 2, 1 in block 3.
 
 const B1 = ["14:30", "14:40", "14:50", "15:00"];
 const B2 = ["15:30", "15:40", "15:50", "16:00"];
@@ -14,11 +14,17 @@ export const ARTISTS: { id: string; name: string; slots: string[] }[] = [
   { id: "lloyd-allan",       name: "Lloyd Allan",       slots: B2 },
   { id: "aly-farroukh",      name: "Aly Farroukh",      slots: B2 },
   { id: "lava-hijzelaar",    name: "Lava Hijzelaar",    slots: B3 },
-  { id: "antoine-collignon", name: "Antoine Collignon", slots: B3 },
 ];
 
 // all distinct slot times (for admin dropdowns); per-artist validity is checked via ARTISTS[].slots
 export const SLOTS: string[] = [...B1, ...B2, ...B3];
+
+export const BLOCKS: string[][] = [B1, B2, B3];
+
+// 1-based block number a slot belongs to, 0 if it belongs to none
+export function slotBlock(slot: string): number {
+  return BLOCKS.findIndex(b => b.includes(slot)) + 1;
+}
 
 export function artistSlots(id: string): string[] {
   return ARTISTS.find(a => a.id === id)?.slots ?? [];
