@@ -1,6 +1,6 @@
 "use client";
 import { useEffect, useMemo, useState } from "react";
-import { ARTISTS, SLOTS, EVENT } from "@/lib/config";
+import { ARTISTS, SLOTS, EVENT, BOOKINGS_OPEN } from "@/lib/config";
 
 const RED = "#D0293B", ORANGE = "#F29505", BEIGE = "#EDE3D7", BLACK = "#141414";
 const GRAD = "linear-gradient(120deg,#F05123 0%,#D0293B 55%,#BE1E5E 100%)";
@@ -48,6 +48,35 @@ export default function Page() {
         <p style={{ color: BEIGE, fontWeight: 700, fontSize: 17, margin: "0 0 4px" }}>{EVENT.date} · reviews 14:30–17:15</p>
         <p style={{ color: BEIGE, opacity: .9, margin: "0 0 28px" }}>{EVENT.venue} · {EVENT.reviewMinutes} minutes, one on one</p>
 
+        {!BOOKINGS_OPEN && (
+          <>
+            <div style={{ background: BEIGE, borderLeft: `6px solid ${RED}`, padding: "18px 20px" }}>
+              <div style={{ textTransform: "uppercase", fontWeight: 800, fontSize: 15, letterSpacing: ".06em", marginBottom: 6 }}>
+                Online booking is closed
+              </div>
+              <p style={{ margin: 0, fontSize: 15, lineHeight: 1.5 }}>
+                Come to the info desk at BIRD and we&rsquo;ll sign you up by hand.
+                Leftover spots and no-shows go to whoever is standing there.
+              </p>
+            </div>
+
+            <section style={{ marginTop: 26 }}>
+              <h2 style={{ color: "#fff", textTransform: "uppercase", fontSize: 16, letterSpacing: ".08em", margin: "0 0 12px" }}>
+                Who&rsquo;s reviewing, and when
+              </h2>
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill,minmax(min(190px,100%),1fr))", gap: 10 }}>
+                {ARTISTS.map(a => (
+                  <div key={a.id} style={{ background: "#fff", padding: "12px 14px" }}>
+                    <div style={{ fontWeight: 800 }}>{a.name}</div>
+                    <div style={{ fontSize: 12.5, color: "#6a6156" }}>{a.slots[0]}–{endOf(a.slots)}</div>
+                  </div>
+                ))}
+              </div>
+            </section>
+          </>
+        )}
+
+        {BOOKINGS_OPEN && <>
         {/* step 1: artist */}
         <Section n="1" title="Pick your reviewer">
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill,minmax(min(190px,100%),1fr))", gap: 10 }}>
@@ -114,6 +143,7 @@ export default function Page() {
             {msg.text}
           </div>
         )}
+        </>}
 
         <p style={{ color: BEIGE, opacity: .85, fontSize: 13, marginTop: 34, lineHeight: 1.5 }}>
           One review per person. Bring your portfolio on a tablet/laptop or printed.
@@ -134,6 +164,13 @@ function Section({ n, title, children }: { n: string; title: string; children: R
       {children}
     </section>
   );
+}
+
+// when the last slot of the day wraps up, e.g. ["16:30",…,"17:00"] → "17:10"
+function endOf(slots: string[]): string {
+  const [h, m] = slots[slots.length - 1].split(":").map(Number);
+  const t = h * 60 + m + EVENT.slotMinutes;
+  return `${String(Math.floor(t / 60)).padStart(2, "0")}:${String(t % 60).padStart(2, "0")}`;
 }
 
 const btn: React.CSSProperties = { border: "none", cursor: "pointer", padding: "12px 14px", fontFamily: "inherit", fontSize: 14 };

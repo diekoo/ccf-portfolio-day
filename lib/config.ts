@@ -19,6 +19,10 @@ export const ARTISTS: { id: string; name: string; slots: string[] }[] = [
 // all distinct slot times (for admin dropdowns); per-artist validity is checked via ARTISTS[].slots
 export const SLOTS: string[] = [...B1, ...B2, ...B3];
 
+// Online booking is closed — sign-ups now happen at the info desk, via /admin.
+// Flip back to true to reopen the public form.
+export const BOOKINGS_OPEN = false;
+
 export const BLOCKS: string[][] = [B1, B2, B3];
 
 // 1-based block number a slot belongs to, 0 if it belongs to none

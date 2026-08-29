@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { sql, ensureSchema } from "@/lib/db";
-import { ARTISTS, SLOTS, artistSlots } from "@/lib/config";
+import { ARTISTS, SLOTS, artistSlots, BOOKINGS_OPEN } from "@/lib/config";
 
 export const dynamic = "force-dynamic";
 
@@ -17,6 +17,13 @@ export async function GET() {
 
 // POST /api/bookings { artistId, slot, name, email }
 export async function POST(req: NextRequest) {
+  // closed here too, not just in the UI — a page left open must not still book
+  if (!BOOKINGS_OPEN) {
+    return NextResponse.json(
+      { error: "Online booking is closed. Come to the info desk at BIRD and we'll sign you up there." },
+      { status: 403 },
+    );
+  }
   await ensureSchema();
   const body = await req.json().catch(() => null);
   if (!body) return NextResponse.json({ error: "Invalid request" }, { status: 400 });
